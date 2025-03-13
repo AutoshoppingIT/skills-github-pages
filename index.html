@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Annunci Auto</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: black;
+            color: white;
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100vh;
+        }
+        .slideshow {
+            display: flex;
+            width: 5000px; /* Ripristina la larghezza originale */
+            height: 1250px; /* Ripristina l'altezza originale */
+        }
+        .image-container {
+            width: 1500px; /* Ripristina la larghezza originale per i contenitori di immagine */
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+        .image-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: opacity 1s ease-in-out;
+        }
+        .info-container {
+            width: 2000px; /* Ripristina la larghezza originale per il contenitore centrale */
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        .info-container img {
+            width: 92%; /* Logo ridotto del 22% rispetto alla versione precedente */
+            margin-bottom: 20px;
+        }
+        .title {
+            font-size: 96px; /* Dimensioni del titolo (marca/modello/allestimento) aumentate del 25% */
+            font-weight: bold;
+            color: white;
+        }
+        .price {
+            font-size: 96px; /* Dimensioni del prezzo aumentate del 25% */
+            font-weight: bold;
+            color: red;
+        }
+        .details {
+            font-size: 48px; /* Dettagli raddoppiati */
+            color: lightblue;
+        }
+
+        /* Media queries per dispositivi con schermi più piccoli */
+        @media (max-width: 1024px) {
+            .title, .price, .details {
+                font-size: 72px; /* Ridurre le dimensioni per schermi più piccoli */
+            }
+
+            .info-container img {
+                width: 100%;
+            }
+
+            .image-container {
+                width: 50%;
+            }
+
+            .info-container {
+                width: 50%;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .title, .price, .details {
+                font-size: 48px; /* Ancora più piccolo su schermi davvero piccoli */
+            }
+
+            .image-container {
+                width: 100%;
+            }
+
+            .info-container {
+                width: 100%;
+            }
+
+            .slideshow {
+                flex-direction: column; /* Layout verticale per schermi piccoli */
+            }
+        }
+
+        .slideshow.flip {
+            animation: flip 1s ease-in-out forwards;
+        }
+
+        @keyframes flip {
+            0% {
+                transform: rotateY(0deg);
+            }
+            100% {
+                transform: rotateY(180deg);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="slideshow">
+        <div class="image-container" id="left-image"></div>
+        <div class="info-container">
+            <img src="https://cdnwp.dealerk.com/86ea5cfd/uploads/sites/27/2025/03/logo.png" alt="AutoShopping Logo">
+            <div class="title" id="title"></div>
+            <div class="price" id="price"></div>
+            <div class="details" id="km"></div>
+            <div class="details" id="power"></div>
+            <div class="details" id="gear"></div>
+        </div>
+        <div class="image-container" id="right-image"></div>
+    </div>
+
+    <script>
+        let carIndex = 0;
+        let imageIndex = 0;
+        let carsData = [];
+        
+        function showCar(index) {
+            let car = carsData[index];
+            if (!car) return;
+
+            document.getElementById("left-image").innerHTML = `<img src="${car.images[imageIndex % car.images.length]}" alt="Auto Image">`;
+            document.getElementById("right-image").innerHTML = `<img src="${car.images[(imageIndex + 1) % car.images.length]}" alt="Auto Image">`;
+            
+            document.getElementById("title").textContent = `${car.make} ${car.model}`;
+            document.getElementById("price").textContent = `PREZZO: ${car.price}`;
+            document.getElementById("km").textContent = `KM: ${car.km} km`;
+            document.getElementById("power").textContent = `POTENZA: ${car.hp} CV / ${car.kw} kW`;
+            document.getElementById("gear").textContent = `CAMBIO: ${car.gear}`;
+        }
+        
+        function rotateImages() {
+            if (carsData.length === 0) return;
+            imageIndex = (imageIndex + 2) % carsData[carIndex].images.length;
+            if (imageIndex === 0) {
+                carIndex = (carIndex + 1) % carsData.length;
+                document.querySelector(".slideshow").classList.add("flip");
+                setTimeout(() => {
+                    document.querySelector(".slideshow").classList.remove("flip");
+                }, 1000);
+                showCar(carIndex);
+            }
+            showCar(carIndex);
+        }
+
+        function fetchXML() {
+            fetch('http://localhost/proxy.php')
+                .then(response => response.text())
+                .then(str => new window.DOMParser().parseFromString(str, "text/xml"))
+                .then(xml => {
+                    let cars = xml.getElementsByTagName("car");
+                    carsData = Array.from(cars).map(car => ({
+                        make: car.getElementsByTagName("make")[0]?.textContent || "N/D",
+                        model: car.getElementsByTagName("version")[0]?.textContent || "N/D",
+                        price: parseFloat(car.getElementsByTagName("priceB2c")[0]?.textContent || 0).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' }),
+                        km: car.getElementsByTagName("km")[0]?.textContent || "N/D",
+                        hp: car.getElementsByTagName("hp")[0]?.textContent || "N/D",
+                        kw: car.getElementsByTagName("kw")[0]?.textContent || "N/D",
+                        gear: car.getElementsByTagName("gearType")[0]?.textContent || "N/D",
+                        images: [...car.getElementsByTagName("image")].map(img => img.textContent)
+                    }));
+                    showCar(0);
+                })
+                .catch(error => console.error("Errore nel caricamento XML:", error));
+        }
+        
+        fetchXML();
+        setInterval(rotateImages, 3000);
+    </script>
+</body>
+</html>
+
+
